@@ -1,6 +1,7 @@
 /* --- CẤU HÌNH BLYNK --- */
 #define BLYNK_TEMPLATE_ID   "TMPL2378628"
 #define BLYNK_TEMPLATE_NAME "Giám sát môi trường"
+#define BLYNK_AUTH_TOKEN    "HM_Co1NJv9KJp7Phnny0tyGQBRHkO1e3"
 
 #define BLYNK_PRINT Serial
 
@@ -12,7 +13,9 @@
 #include <DallasTemperature.h>
 #include <ESPmDNS.h> // Thư viện tạo tên miền cục bộ (.local)
 
-#include "secrets.h"
+// Thông tin WiFi
+const char* ssid = "VIETSET_TECH";
+const char* pass = "vs68686868";
 
 // Khởi tạo Web Server ở cổng 80
 WebServer server(80);
