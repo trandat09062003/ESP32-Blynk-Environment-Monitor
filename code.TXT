@@ -1,0 +1,248 @@
+/* --- CẤU HÌNH BLYNK (Dán mã của bạn vào đây) --- */
+#define BLYNK_TEMPLATE_ID "Thay_bằng_ID_của_bạn"
+#define BLYNK_TEMPLATE_NAME "Thay_bằng_Tên_của_bạn"
+#define BLYNK_AUTH_TOKEN "Thay_bằng_Token_của_bạn"
+
+#define BLYNK_PRINT Serial
+
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <BlynkSimpleEsp32.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <ESPmDNS.h> // Thư viện tạo tên miền cục bộ (.local)
+
+// Thông tin WiFi
+const char* ssid = "WIFI";
+const char* pass = "12345678";
+
+// Khởi tạo Web Server ở cổng 80
+WebServer server(80);
+
+// Biến lưu dữ liệu hiển thị Web và Blynk
+float currentTemp = 0.0;
+int currentSmoke = 0;
+
+// Biến lưu ngưỡng cảnh báo (Có thể thay đổi từ Blynk)
+float tempThreshold = 50.0; 
+int smokeThreshold = 2000;  
+
+// Biến theo dõi sự thay đổi trạng thái của Relay
+bool lastRelayState = false;
+
+// Biến theo dõi sự thay đổi trạng thái của Nhiệt độ
+bool lastTempState = false;
+
+// Khai báo chân
+#define DS18B20_PIN 4
+#define BUZZER_PIN 18
+#define MQ5_PIN 33
+#define FAN_PIN 25
+#define RELAY_PIN 27
+#define LED_STATUS 26
+
+OneWire oneWire(DS18B20_PIN);
+DallasTemperature sensors(&oneWire);
+
+unsigned long previousMillis = 0;
+const long interval = 5000; // Cập nhật dữ liệu mỗi 5 giây
+
+/* --- GIAO DIỆN WEB SERVER NỘI BỘ --- */
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Giám Sát Môi Trường</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin-top: 50px; }
+        .card { background: white; padding: 20px; margin: 10px auto; border-radius: 10px; width: 300px; box-shadow: 0px 4px 8px rgba(0,0,0,0.2); }
+        h1 { color: #333; }
+        .value { font-size: 40px; font-weight: bold; color: #007bff; }
+        .warning { color: red; font-weight: bold; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <h1>HỆ THỐNG GIÁM SÁT</h1>
+    <p>Cập nhật lần cuối: <span id="time">Đang tải...</span></p>
+    <div class="card">
+        <h3>Nhiệt độ DS18B20</h3>
+        <div class="value" id="temp">-- °C</div>
+    </div>
+    <div class="card">
+        <h3>Rò rỉ Gas (MQ5)</h3>
+        <div class="value" id="smoke">--</div>
+    </div>
+    <div id="alarm" class="warning">⚠️ CẢNH BÁO NGUY HIỂM! ⚠️</div>
+    <script>
+        function fetchData() {
+            fetch('/data')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('temp').innerText = data.temperature + " °C";
+                document.getElementById('smoke').innerText = data.smoke;
+                document.getElementById('time').innerText = data.time;
+                if(data.alarm == 1) {
+                    document.getElementById('alarm').style.display = "block";
+                } else {
+                    document.getElementById('alarm').style.display = "none";
+                }
+            })
+            .catch(error => console.log("Chưa có dữ liệu mới"));
+        }
+        setInterval(fetchData, 2000); 
+        fetchData(); 
+    </script>
+</body>
+</html>
+)rawliteral";
+
+void handleRoot() {
+  server.send(200, "text/html", index_html);
+}
+
+void handleData() {
+  int isAlarm = (currentTemp > tempThreshold || currentSmoke > smokeThreshold) ? 1 : 0;
+  String json = "{\"temperature\": " + String(currentTemp) + ", \"smoke\": " + String(currentSmoke) + ", \"time\": \"Vừa xong\", \"alarm\": " + String(isAlarm) + "}";
+  server.send(200, "application/json", json);
+}
+
+/* --- HÀM NHẬN DỮ LIỆU TỪ BLYNK (SLIDER) --- */
+// V2: Slider chỉnh ngưỡng nhiệt độ
+BLYNK_WRITE(V2) {
+  tempThreshold = param.asFloat();
+  Serial.print("Ngưỡng nhiệt độ mới (Blynk): ");
+  Serial.println(tempThreshold);
+}
+
+// V3: Slider chỉnh ngưỡng khói/gas
+BLYNK_WRITE(V3) {
+  smokeThreshold = param.asInt();
+  Serial.print("Ngưỡng khói mới (Blynk): ");
+  Serial.println(smokeThreshold);
+}
+
+// Bật đồng bộ giá trị Threshold từ server Blynk xuống ESP32 mỗi khi khởi động/mất mạng có lại
+BLYNK_CONNECTED() {
+  Blynk.syncVirtual(V2);
+  Blynk.syncVirtual(V3);
+}
+
+/* --- SETUP & LOOP --- */
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(FAN_PIN, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(LED_STATUS, OUTPUT);
+  pinMode(MQ5_PIN, INPUT);
+
+  digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(FAN_PIN, LOW);
+  digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(LED_STATUS, LOW);
+
+  sensors.begin();
+
+  Serial.print("Đang kết nối WiFi");
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nĐã kết nối WiFi!");
+  Serial.print("ĐỊA CHỈ TRANG WEB: http://");
+  Serial.println(WiFi.localIP());
+  digitalWrite(LED_STATUS, HIGH);
+
+  // Khởi động Web Server
+  server.on("/", handleRoot);
+  server.on("/data", handleData);
+  server.begin();
+
+  // Khởi động tên miền cục bộ giamsat.local
+  if (MDNS.begin("giamsat")) {
+    Serial.println("Đã cấu hình tên miền cục bộ: http://giamsat.local");
+  }
+
+  // Khởi động Blynk
+  Blynk.config(BLYNK_AUTH_TOKEN);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  // Chạy nền Web Server và Blynk
+  server.handleClient();
+  Blynk.run();
+
+  // Xử lý mất mạng WiFi
+  if (WiFi.status() != WL_CONNECTED) {
+    digitalWrite(LED_STATUS, LOW);
+    WiFi.reconnect();
+  } else {
+    digitalWrite(LED_STATUS, HIGH);
+  }
+
+  // Đọc và xử lý chu kỳ 5 giây
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    // Đọc cảm biến
+    sensors.requestTemperatures(); 
+    float tempValue = sensors.getTempCByIndex(0);
+    int smokeValue = analogRead(MQ5_PIN);
+
+    if (tempValue == DEVICE_DISCONNECTED_C) {
+      Serial.println("Lỗi: Không tìm thấy cảm biến nhiệt độ DS18B20!");
+      return; 
+    }
+
+    currentTemp = tempValue;
+    currentSmoke = smokeValue;
+
+    Serial.print("Nhiệt độ: "); Serial.print(currentTemp); Serial.println(" *C");
+    Serial.print("Khí gas/Khói: "); Serial.println(currentSmoke);
+
+    // Đẩy dữ liệu lên biểu đồ/số đo trên Blynk
+    Blynk.virtualWrite(V0, currentTemp);
+    Blynk.virtualWrite(V1, currentSmoke);
+
+    // 1. Logic Quạt (Theo nhiệt độ)
+    bool newTempState = (currentTemp > tempThreshold);
+    if (newTempState != lastTempState) {
+      lastTempState = newTempState;
+      if (newTempState) {
+        digitalWrite(FAN_PIN, HIGH);
+        Serial.println("\n[LOG TEMP] -> CẢNH BÁO: Nhiệt độ vượt ngưỡng! Bật quạt.");
+        Blynk.logEvent("canh_bao_nhiet", "CẢNH BÁO: Nhiệt độ vượt ngưỡng an toàn!");
+      } else {
+        digitalWrite(FAN_PIN, LOW);
+        Serial.println("\n[LOG TEMP] -> AN TOÀN: Nhiệt độ đã hạ xuống mức bình thường. Tắt quạt.");
+      }
+    }
+
+    // 2. Logic Relay & Còi (Theo khói/gas)
+    bool newRelayState = (currentSmoke > smokeThreshold);
+    if (newRelayState != lastRelayState) {
+      lastRelayState = newRelayState;
+      if (newRelayState) {
+        digitalWrite(RELAY_PIN, HIGH);
+        Serial.println("\n[LOG RELAY] -> TRẠNG THÁI THAY ĐỔI: BẬT (ON) - Phát hiện rò rỉ Gas vượt ngưỡng!");
+        Blynk.logEvent("canh_bao_gas", "CẢNH BÁO: Phát hiện rò rỉ khí Gas vượt ngưỡng!");
+      } else {
+        digitalWrite(RELAY_PIN, LOW);
+        Serial.println("\n[LOG RELAY] -> TRẠNG THÁI THAY ĐỔI: TẮT (OFF) - Nồng độ gas trở về mức an toàn.");
+      }
+    }
+
+    if (currentSmoke > smokeThreshold) {
+      digitalWrite(BUZZER_PIN, HIGH); 
+      Serial.println(">>> CẢNH BÁO KHÓI/GAS <<<");
+    } else {
+      digitalWrite(BUZZER_PIN, LOW);
+    }
+  }
+}

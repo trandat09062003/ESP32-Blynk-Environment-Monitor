@@ -1,0 +1,24 @@
+# Cấu hình bỏ qua các file thừa khi đẩy lên GitHub
+
+# BỎ QUA THƯ MỤC THƯ VIỆN NGOÀI (Chỉ cài qua Library Manager)
+libraries/
+
+# Bỏ qua các file biên dịch tạm thời của Arduino IDE
+build/
+bin/
+*.hex
+*.elf
+*.bin
+
+# Bỏ qua cấu hình cá nhân của các trình soạn thảo (VS Code, CLion...)
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Bỏ qua các file rác của hệ điều hành
+Thumbs.db
+.DS_Store
+
+# Bỏ qua các file log tạm thời
+*.log
