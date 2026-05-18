@@ -1,7 +1,6 @@
 /* --- CẤU HÌNH BLYNK (Dán mã của bạn vào đây) --- */
 #define BLYNK_TEMPLATE_ID "Thay_bằng_ID_của_bạn"
 #define BLYNK_TEMPLATE_NAME "Thay_bằng_Tên_của_bạn"
-#define BLYNK_AUTH_TOKEN "Thay_bằng_Token_của_bạn"
 
 #define BLYNK_PRINT Serial
 
@@ -13,9 +12,7 @@
 #include <DallasTemperature.h>
 #include <ESPmDNS.h> // Thư viện tạo tên miền cục bộ (.local)
 
-// Thông tin WiFi
-const char* ssid = "WIFI";
-const char* pass = "12345678";
+#include "secrets.h"
 
 // Khởi tạo Web Server ở cổng 80
 WebServer server(80);

@@ -22,3 +22,6 @@ Thumbs.db
 
 # Bỏ qua các file log tạm thời
 *.log
+
+# Secrets file (Wi-Fi passwords, Blynk tokens)
+**/secrets.h
