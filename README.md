@@ -1,5 +1,7 @@
 # Hệ thống Giám sát Môi trường sử dụng ESP32, Blynk IoT và Local Web Server
 
+![Views](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Ftrandat09062003%2FESP32-Blynk-Environment-Monitor&count_bg=%2379C0FF&title_bg=%23555555&icon=&icon_color=%23E5E5E5&title=views&edge_flat=false)
+
 Hệ thống IoT giám sát các thông số môi trường (nhiệt độ, nồng độ khí gas/khói) thời gian thực sử dụng vi điều khiển ESP32. Thiết bị hỗ trợ tự động kích hoạt quạt làm mát và các cảnh báo khẩn cấp (còi báo động, rơ-le ngắt nguồn phụ tải) khi các thông số vượt ngưỡng an toàn.
 
 Hệ thống tích hợp hai kênh giám sát độc lập (Dual-Control/Dual-Monitor):
