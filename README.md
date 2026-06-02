@@ -1,27 +1,26 @@
-# 🌿 Dự Án Giám Sát Môi Trường Thông Minh (ESP32 - Blynk IoT - Web Server)
+# Hệ thống Giám sát Môi trường sử dụng ESP32, Blynk IoT và Local Web Server
 
-Chào mừng bạn đến với tài liệu hướng dẫn chi tiết của dự án **Giám sát môi trường**. Đây là một hệ thống IoT hoàn chỉnh sử dụng vi điều khiển **ESP32** để theo dõi nhiệt độ phòng và nồng độ khí gas/khói theo thời gian thực, đồng thời tự động kích hoạt quạt làm mát và hệ thống cảnh báo (còi hú, relay ngắt khẩn cấp) khi có sự cố xảy ra.
+Hệ thống IoT giám sát các thông số môi trường (nhiệt độ, nồng độ khí gas/khói) thời gian thực sử dụng vi điều khiển ESP32. Thiết bị hỗ trợ tự động kích hoạt quạt làm mát và các cảnh báo khẩn cấp (còi báo động, rơ-le ngắt nguồn phụ tải) khi các thông số vượt ngưỡng an toàn.
 
-Dự án sở hữu tính năng **Dual-Control/Dual-Monitor**:
-1. **Giám sát & Điều khiển từ xa qua Blynk IoT Cloud**: Biểu đồ trực quan, đẩy dữ liệu liên tục, tự động gửi **thông báo đẩy (Push Notifications) khẩn cấp** về điện thoại khi có sự cố và cho phép người dùng cấu hình ngưỡng cảnh báo bằng thanh kéo (Slider).
-2. **Trang Web nội bộ (Local Web Server)**: Giao diện web được thiết kế theo phong cách **Glassmorphism UI** hiện đại, mượt mà, phản hồi siêu nhanh trực tiếp từ mạch qua mạng LAN/Wi-Fi cục bộ sử dụng tên miền thông minh **`http://giamsat.local`** mà không cần nhớ IP.
-
----
-
-## 📌 Các Tính Năng Nổi Bật
-
-*   **Đo nhiệt độ chính xác**: Sử dụng cảm biến **DS18B20** giao tiếp qua chuẩn 1-Wire, dải đo rộng và cực kỳ ổn định.
-*   **Đo khí gas rò rỉ nhạy bén**: Sử dụng cảm biến **MQ5** (kết nối chân Analog) phát hiện sớm các nguy cơ rò rỉ khí gas hóa lỏng LPG, Methane ($CH_4$), hoặc gas tự nhiên.
-*   **Điều khiển tự động thông minh**:
-    *   **Quạt làm mát (FAN)** tự động bật khi nhiệt độ vượt quá ngưỡng cài đặt (`tempThreshold`).
-    *   **Còi báo (BUZZER)** và **Relay (thiết bị an toàn)** tự động kích hoạt ngay khi nồng độ khí gas vượt ngưỡng an toàn (`smokeThreshold`).
-*   **Thông báo khẩn cấp tức thời**: Tích hợp dịch vụ **Blynk LogEvent** gửi thông báo đẩy trực tiếp về điện thoại/email của người dùng ngay khi xảy ra sự cố (đã lọc tránh spam lặp lại).
-*   **Giao diện Glassmorphism Web hiện đại**: Hiển thị dữ liệu dạng thẻ (Card) thời thượng, hỗ trợ hiệu ứng chuyển động vi mô (micro-animations), chế độ cảnh báo nhấp nháy đỏ khi có sự cố nguy hiểm và cơ chế tự kết nối lại nếu mất mạng.
-*   **Đồng bộ hóa Blynk 2-way**: Đồng bộ các thông số cấu hình ngưỡng cảnh báo giữa ESP32 và Server Blynk ngay cả khi khởi động lại (`Blynk.syncVirtual`).
+Hệ thống tích hợp hai kênh giám sát độc lập (Dual-Control/Dual-Monitor):
+1. **Giám sát và điều khiển từ xa qua Blynk IoT Cloud:** Cho phép theo dõi số liệu trực quan, điều khiển bật/tắt thiết bị, thay đổi các ngưỡng cảnh báo động qua ứng dụng điện thoại và tự động gửi thông báo push alert khi phát hiện sự cố rò rỉ khí gas hoặc quá nhiệt.
+2. **Trang Web nội bộ (Local Web Server):** ESP32 tự khởi chạy một web server cục bộ hiển thị dashboard dữ liệu. Web server được gán mDNS cục bộ **`http://giamsat.local`** để người dùng trong cùng mạng Wi-Fi truy cập trực tiếp không cần nhớ địa chỉ IP của mạch.
 
 ---
 
-## 📊 Sơ Đồ Kiến Trúc Hệ Thống (Architecture)
+## 1. Các tính năng chính của hệ thống
+
+* **Đo nhiệt độ:** Sử dụng cảm biến **DS18B20** giao tiếp chuẩn 1-Wire.
+* **Đo nồng độ khí gas:** Sử dụng cảm biến **MQ5** kết nối qua chân Analog (ADC) để phát hiện khí LPG, Methane ($CH_4$), hoặc khói.
+* **Điều khiển thiết bị chấp hành tự động:**
+  * **Quạt tản nhiệt (FAN):** Tự động bật khi nhiệt độ môi trường vượt ngưỡng `tempThreshold`.
+  * **Còi báo (Buzzer) & Relay ngắt điện:** Tự động kích hoạt đồng thời khi nồng độ khí vượt ngưỡng cảnh báo `smokeThreshold`.
+* **Cảnh báo khẩn cấp:** Gửi cảnh báo push notification về điện thoại qua dịch vụ Blynk LogEvent ngay khi phát hiện rò rỉ gas/quá nhiệt (cơ chế chống spam lặp lại liên tục).
+* **Đồng bộ tham số 2 chiều:** Đồng bộ các ngưỡng điều chỉnh trên ứng dụng Blynk và thiết bị sau mỗi lần khởi động lại thông qua hàm `Blynk.syncVirtual`.
+
+---
+
+## 2. Sơ đồ kiến trúc Hệ thống (System Architecture)
 
 ```mermaid
 flowchart TD
@@ -66,156 +65,76 @@ flowchart TD
 
 ---
 
-## 🛠️ Cấu Hình Phần Cứng & Sơ Đồ Nối Chân
+## 3. Sơ đồ kết nối phần cứng (Pinout)
 
-Dưới đây là sơ đồ kết nối các chân IO của ESP32 với các linh kiện ngoại vi:
+Kết nối các chân IO của vi điều khiển ESP32 với linh kiện ngoại vi:
 
-| Thiết Bị | Loại Linh Kiện | Chân ESP32 (GPIO) | Ghi Chú |
-| :--- | :--- | :---: | :--- |
-| **DS18B20** | Cảm biến Nhiệt độ | **GPIO 4** | Cần trở kéo lên **4.7kΩ** nối giữa chân VCC (3.3V) và chân Data. |
-| **MQ5** | Cảm biến Rò rỉ Gas | **GPIO 33** | Kết nối chân **AO (Analog Output)** vào ESP32. |
-| **BUZZER** | Còi báo động | **GPIO 18** | Dùng còi báo tích cực (Active Buzzer) hoặc qua Transistor đệm. |
-| **FAN** | Quạt làm mát (5V/12V) | **GPIO 25** | Điều khiển qua Transistor (C1815/IRF540) hoặc Relay Module. |
-| **RELAY** | Relay ngắt điện / thiết bị phụ | **GPIO 27** | Sử dụng Module Relay cách ly quang (Optocoupler). |
-| **LED STATUS**| LED hiển thị Wi-Fi | **GPIO 26** | Đèn sáng: Wi-Fi Connected | Đèn tắt/nhấp nháy: Wi-Fi Disconnected. |
+| Linh Kiện | Chân kết nối ESP32 (GPIO) | Ghi Chú |
+| :--- | :---: | :--- |
+| **Cảm biến DS18B20** | **GPIO 4** | Cần điện trở kéo lên $4.7\text{k}\Omega$ nối giữa chân DATA và 3.3V |
+| **Cảm biến MQ5** | **GPIO 33 (AO)** | Đọc tín hiệu Analog từ MQ5 (Cấp nguồn VCC 5V riêng cho cảm biến) |
+| **Còi báo (Buzzer)** | **GPIO 18** | Sử dụng còi báo tích cực điều khiển qua Transistor NPN (2N2222) |
+| **Quạt tản nhiệt** | **GPIO 25** | Điều khiển đóng cắt nguồn quạt qua MOSFET (IRLZ44N) hoặc Relay |
+| **Module Relay** | **GPIO 27** | Đóng cắt nguồn phụ tải, cấp nguồn 5V riêng cho cuộn hút rơ-le |
+| **LED Wi-Fi Status** | **GPIO 26** | LED báo trạng thái Wi-Fi (sáng khi kết nối thành công, nháy khi mất mạng) |
 
 > [!IMPORTANT]
-> **Lưu ý lắp ráp phần cứng:**
-> - Cảm biến **MQ5** cần nguồn **5V** ổn định để sấy nóng cuộn dây cảm ứng bên trong. Nếu cấp nguồn 3.3V, kết quả đo analog sẽ rất thấp và không chính xác.
-> - Cảm biến **DS18B20** bắt buộc phải có trở kéo lên **4.7kΩ** từ chân Data lên VCC (3.3V). Nếu không có trở này, ESP32 sẽ báo lỗi không tìm thấy cảm biến (`-127 °C`).
-> - **Cấp nguồn:** Cần sử dụng nguồn điện tốt (Củ sạc 5V - 2A) để tránh hiện tượng sụt áp (Brownout) khi Wi-Fi truyền tải dữ liệu đồng thời với việc Rơ-le, Quạt và Còi hoạt động.
+> **Lưu ý phần cứng quan trọng:**
+> 1. Cảm biến **MQ5** cần nguồn **5V** ổn định để duy trì dây sấy bên trong hoạt động chính xác. Không cấp nguồn 3.3V từ ESP32 vì sẽ làm sai lệch giá trị đo.
+> 2. Cảm biến **DS18B20** bắt buộc có điện trở kéo lên $4.7\text{k}\Omega$ kết nối giữa dây DATA và 3.3V. Thiếu trở kéo này, cảm biến sẽ trả về giá trị `-127°C`.
+> 3. Cấp nguồn tổng cho mạch nên dùng bộ nguồn USB tối thiểu $5\text{V} - 2\text{A}$ để tránh hiện tượng sụt áp (Brownout) gây reset chip khi quạt, còi và Wi-Fi hoạt động cùng lúc.
 
 ---
 
-## 📂 Cấu Trúc Thư Mục Dự Án
-
-Thư mục dự án được tổ chức gọn gàng và dễ dàng nạp code:
+## 4. Cấu trúc thư mục mã nguồn
 
 ```text
 blink/
-├── blink.ino              <-- Mã nguồn chính của dự án (Blynk IoT + Web Server + mDNS)
-├── code.TXT               <-- Bản lưu mã nguồn sơ cua (để tham khảo)
-├── .gitignore             <-- File cấu hình loại bỏ file rác khi đẩy lên GitHub
-├── README.md              <-- Hướng dẫn này (Tài liệu dự án)
+├── blink.ino              <-- Mã nguồn firmware chính (Blynk IoT + Web Server + mDNS)
 ├── hardware_test/
-│   └── hardware_test.ino  <-- Mã nguồn TEST PHẦN CỨNG độc lập qua Serial Monitor
+│   └── hardware_test.ino  <-- Mã nguồn chẩn đoán và kiểm tra phần cứng đơn lẻ
 └── relay_test/
-    └── relay_test.ino     <-- Mã nguồn TEST CHUYÊN BIỆT RELAY (nhấp nháy mỗi 2 giây)
+    └── relay_test.ino     <-- Script kiểm tra hoạt động đóng/ngắt của rơ-le
 ```
 
 ---
 
-## 🚀 Hướng Dẫn Cấu Hình Phần Mềm
+## 5. Hướng dẫn nạp chương trình và cấu hình
 
-### 1. Cài đặt môi trường
-*   Tải và cài đặt **Arduino IDE** phiên bản mới nhất (khuyến nghị 2.x).
-*   Thêm board ESP32 vào Arduino IDE:
-    1.  Vào `File` -> `Preferences`.
-    2.  Tại ô `Additional Boards Manager URLs`, dán đường dẫn: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-    3.  Vào `Tools` -> `Board` -> `Boards Manager`, tìm kiếm `esp32` và ấn **Install**.
+### Bước 1: Chuẩn bị phần mềm
+* Cài đặt **Arduino IDE** (khuyến nghị phiên bản 2.x trở lên).
+* Thêm board ESP32 vào trình quản lý Boards Manager bằng đường dẫn: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+* Cài đặt các thư viện cần thiết thông qua Library Manager:
+  * `Blynk` (by Volodymyr Shymanskyy)
+  * `OneWire` (by Paul Stoffregen)
+  * `DallasTemperature` (by Miles Burton)
 
-### 2. Cài đặt Thư viện cần thiết
-Thông qua thư viện hệ thống (`Sketch` -> `Include Library` -> `Manage Libraries...`), bạn hãy cài đặt các thư viện sau:
-*   `Blynk` (bởi Volodymyr Shymanskyy)
-*   `OneWire` (bởi Paul Stoffregen)
-*   `DallasTemperature` (bởi Miles Burton)
-
----
-
-## 📲 Cấu Hình Đám Mây Blynk IoT
-
-Để nhận thông báo và điều khiển trên Blynk, bạn cần cấu hình các thông số sau trên Blynk Console:
-
-### 1. Tạo Chân Ảo (Datastreams)
-Thiết lập các chân ảo trên Template **`Giám sát môi trường`**:
-*   **V0**: Kiểu dữ liệu `Double/Float` (Hiển thị Nhiệt độ).
-*   **V1**: Kiểu dữ liệu `Integer` (Hiển thị Khí Gas MQ5).
-*   **V2**: Kiểu dữ liệu `Double/Float`, chế độ `Read/Write` (Slider chỉnh Ngưỡng nhiệt độ).
-*   **V3**: Kiểu dữ liệu `Integer`, chế độ `Read/Write` (Slider chỉnh Ngưỡng khí gas).
-
-### 2. Tạo 2 Sự Kiện Cảnh Báo (Events & Notifications)
-Trong phần chỉnh sửa Template -> chọn tab **`Events & Notifications`** -> chọn **`+ Add Event`** -> chọn **`Custom`** để tạo đúng 2 sự kiện:
-1.  **Sự kiện 1 (Cảnh báo quá nhiệt):**
-    *   *Event Code:* **`canh_bao_nhiet`** (viết thường, bắt buộc khớp 100% với code).
-    *   *Title:* `Cảnh báo nhiệt độ cao!`
-    *   *Event Type:* `Warning`
-    *   *Tab Notifications:* Bật **`Send push notification to Blynk app`**.
-    *   *Tab Settings:* Đặt mục *Event will be sent to user only once per* thành **`1 minute`** (để dễ test).
-2.  **Sự kiện 2 (Cảnh báo rò rỉ gas):**
-    *   *Event Code:* **`canh_bao_gas`**
-    *   *Title:* `Cảnh báo rò rỉ Gas nguy hiểm!`
-    *   *Event Type:* `Critical`
-    *   *Tab Notifications:* Bật **`Send push notification to Blynk app`** (Có thể bật thêm gửi Email).
-    *   *Tab Settings:* Đặt mục *Event will be sent to user only once per* thành **`1 minute`**.
+### Bước 2: Cấu hình thông số trên Blynk Console
+Tạo các Datastreams và sự kiện trên Blynk Template:
+1. **Datastreams (Virtual Pins):**
+   * **V0:** Double/Float (Đọc nhiệt độ).
+   * **V1:** Integer (Đọc nồng độ khí gas).
+   * **V2:** Double/Float, Read/Write (Slider thay đổi ngưỡng nhiệt độ).
+   * **V3:** Integer, Read/Write (Slider thay đổi ngưỡng khí gas).
+2. **Events & Notifications (Sự kiện cảnh báo):**
+   * Tạo Event 1: Event Code là **`canh_bao_nhiet`** (viết thường). Bật thông báo đẩy (push notification) trên điện thoại.
+   * Tạo Event 2: Event Code là **`canh_bao_gas`** (viết thường). Bật thông báo đẩy trên điện thoại.
 
 ---
 
-## 🧪 QUY TRÌNH KIỂM TRA TOÀN DIỆN (FULL FUNCTIONAL TEST)
+## 6. Quy trình chạy thử nghiệm và kiểm tra chức năng
 
-Để đảm bảo hệ thống hoạt động hoàn hảo 100%, hãy thực hiện quy trình test gồm 3 giai đoạn chi tiết dưới đây:
+### Giai đoạn 1: Kiểm tra phần cứng đơn lẻ
+1. **Kiểm tra Rơ-le:** Nạp chương trình tại tệp `relay_test/relay_test.ino` xuống ESP32. Rơ-le phải đóng/ngắt đều đặn mỗi 2 giây kèm theo tiếng tiếp điểm đóng ngắt.
+2. **Kiểm tra cảm biến và ngoại vi:** Nạp chương trình `hardware_test/hardware_test.ino`. Mở Serial Monitor với tốc độ **115200 baud**, nhập phím `7` (hoặc nhập từ `1` đến `6`) để chẩn đoán hoạt động của từng linh kiện riêng biệt.
 
-### Giai Đoạn 1: Chẩn Đoán Phần Cứng & Rơ-le Độc Lập
+### Giai đoạn 2: Kiểm tra Web Server cục bộ
+1. Nạp mã nguồn chính tại tệp `blink.ino`.
+2. Kết nối máy tính hoặc điện thoại vào chung mạng Wi-Fi với ESP32.
+3. Mở trình duyệt web và nhập địa chỉ: **`http://giamsat.local`**
+4. Giao diện web hiển thị các thông số nhiệt độ và khí gas sẽ tự động tải dữ liệu mỗi 2 giây một lần.
 
-Trước khi chạy hệ thống chính, hãy nạp các chương trình test nhỏ để kiểm tra xem các thiết bị ngoại vi và dây cắm có hoạt động hoàn hảo không.
-
-1.  **Test Rơ-le Chuyên Biệt:**
-    *   Mở file [relay_test/relay_test.ino](file:///c:/Users/DELL/OneDrive%20-%20Hanoi%20University%20of%20Science%20and%20Technology/Desktop/blink/relay_test/relay_test.ino) trong Arduino IDE và nạp vào ESP32.
-    *   **Kết quả:** Rơ-le phải đóng/ngắt kêu "tạch tạch" đều đặn mỗi 2 giây, đèn LED trên Module Rơ-le nhấp nháy theo nhịp. Nếu không kêu, kiểm tra xem dây VCC đã nối vào chân 5V của ESP32 chưa.
-2.  **Chẩn Đoán Toàn Bộ Ngoại Vi:**
-    *   Mở file [hardware_test/hardware_test.ino](file:///c:/Users/DELL/OneDrive%20-%20Hanoi%20University%20of%20Science%20and%20Technology/Desktop/blink/hardware_test/hardware_test.ino) và nạp vào ESP32.
-    *   Mở **Serial Monitor** ở tốc độ **115200 baud**, gõ phím `7` (Auto Test) để mạch chạy chu trình kiểm tra tuần tự.
-    *   Bạn cũng có thể gõ các phím từ `1` đến `6` để kiểm tra đơn lẻ từng thiết bị.
-
----
-
-### Giai Đoạn 2: Test Trang Web Nội Bộ (Local Web Server) qua mDNS
-
-1.  Nạp mã nguồn chính [blink.ino](file:///c:/Users/DELL/OneDrive%20-%20Hanoi%20University%20of%20Science%20and%20Technology/Desktop/blink/blink.ino).
-2.  Đảm bảo điện thoại hoặc máy tính test đang **kết nối chung một mạng Wi-Fi** với ESP32.
-3.  Mở trình duyệt Web (Chrome, Safari, Edge...) và gõ địa chỉ:
-    ### **`http://giamsat.local`**
-4.  **Kết quả:** Màn hình giao diện Glassmorphism tuyệt đẹp sẽ hiện ra hiển thị số đo Nhiệt độ và Khí gas. Dữ liệu tự động cập nhật mỗi 2 giây không cần F5 trang.
-
----
-
-### Giai Đoạn 3: Test Kịch Bản Cảnh Báo Tự Động & Đẩy Thông Báo (Notifications)
-
-Mở ứng dụng Blynk trên điện thoại và trang Web nội bộ song song để thực hiện kịch bản test:
-
-#### Kịch Bản A: Vượt Ngưỡng Nhiệt Độ (Test Cảnh Báo Nhiệt)
-1.  Trên giao diện Blynk, kéo Slider chỉnh ngưỡng nhiệt độ (**V2**) xuống thấp hơn nhiệt độ môi trường hiện tại (Ví dụ: Nhiệt độ phòng là `31 °C`, kéo ngưỡng xuống `28 °C`).
-2.  **Kết quả:**
-    *   **Quạt (GPIO 25)** lập tức kích hoạt quay mạnh để hạ nhiệt.
-    *   **Trang web nội bộ**: Hiển thị bảng màu đỏ cảnh báo nhấp nháy: `⚠️ CẢNH BÁO NGUY HIỂM! HỆ THỐNG PHÁT HIỆN SỰ CỐ`. Dấu chấm trạng thái nhấp nháy đỏ rực.
-    *   **Thông báo đẩy:** Điện thoại của bạn rung lên và hiện thông báo: `"CẢNH BÁO: Nhiệt độ vượt ngưỡng an toàn!"`.
-3.  Kéo Slider ngưỡng nhiệt độ (**V2**) lên cao trở lại (Ví dụ: `50 °C`).
-    *   Quạt tắt, giao diện web trở lại xanh dịu an toàn, không có thông báo thừa gửi về điện thoại.
-
-#### Kịch Bản B: Vượt Ngưỡng Rò Rỉ Gas (Test Cảnh Báo Gas)
-1.  Trên giao diện Blynk, kéo Slider chỉnh ngưỡng khí gas (**V3**) xuống thấp hơn chỉ số hiện tại (ví dụ kéo xuống `500` trong khi phòng đang báo `670`), hoặc dùng bật lửa gas dí sát xịt khí gas vào cảm biến.
-2.  **Kết quả:**
-    *   **Còi báo (GPIO 18)** hú còi liên hồi inh ỏi.
-    *   **Relay (GPIO 27)** kêu "tạch" và đóng tiếp điểm (nếu đấu thiết bị tải qua cổng NC, thiết bị đó sẽ lập tức bị ngắt nguồn điện để phòng tránh chập cháy).
-    *   **Trang web nội bộ**: Nhấp nháy đỏ báo động nguy cấp.
-    *   **Thông báo đẩy:** Điện thoại lập tức hiện thông báo khẩn cấp: `"CẢNH BÁO: Phát hiện rò rỉ khí Gas vượt ngưỡng!"`.
-3.  Thả tay khỏi bật lửa, quạt thổi tan khí gas. Trị số giảm dưới ngưỡng.
-    *   Còi ngắt, Rơ-le nhả trạng thái, hệ thống hoạt động âm thầm bình thường trở lại.
-
----
-
-## 📈 Bảo Trì & Xử Lý Sự Cố (Troubleshooting)
-
-### Lỗi sụt áp sập mạch (`E BOD: Brownout detector was triggered`)
-*   **Hiện tượng:** ESP32 bị reset khởi động lại liên tục khi quạt quay, còi hú hoặc khi bắt đầu kết nối Wi-Fi.
-*   **Nguyên nhân:** Cảm biến MQ5 có bộ phận sấy nhiệt ăn dòng lớn (~180mA), cộng thêm Wi-Fi phát sóng tiêu thụ đỉnh (~300mA) vượt quá khả năng cấp dòng của cổng USB máy tính cũ (max 500mA).
-*   **Cách xử lý:**
-    1.  Cắm cáp USB sang cổng **USB 3.0** (màu xanh dương) trên máy tính hoặc cắm thẳng vào **củ sạc điện thoại 5V - 2A**.
-    2.  Hàn thêm 1 con tụ hóa `470uF` hoặc `1000uF` (10V/16V) song song vào 2 chân **5V/Vin** và **GND** của mạch ESP32 để bù dòng tức thời.
-    3.  Đảm bảo các thiết bị công suất cao như Quạt, Rơ-le được cấp nguồn 5V riêng ngoài, không lấy điện trực tiếp từ bộ ổn áp 3.3V của ESP32.
-
-### Lỗi không truy cập được địa chỉ `http://giamsat.local`
-*   **Cách xử lý:** Đảm bảo điện thoại/máy tính của bạn đã bật Wi-Fi kết nối chung một bộ phát Wi-Fi với ESP32. Một số dòng máy Windows cũ bị tắt dịch vụ dò tìm mDNS, bạn có thể tải ứng dụng **Fing** (miễn phí) trên điện thoại để quét IP của thiết bị (dạng `192.168.x.x`) rồi truy cập bằng IP đó.
-
----
-
-Chúc các bạn vận hành hệ thống giám sát môi trường thành công! Hệ thống này rất phù hợp làm đồ án môn học, đồ án tốt nghiệp hoặc ứng dụng giám sát thực tế trong gia đình của bạn.
+### Giai đoạn 3: Kiểm tra cơ chế tự động cảnh báo
+1. Mở ứng dụng Blynk trên điện thoại song song với Web Server.
+2. **Cảnh báo quá nhiệt:** Kéo Slider ngưỡng nhiệt độ (**V2**) xuống thấp hơn nhiệt độ môi trường thực tế. Quạt làm mát (GPIO 25) phải lập tức quay, giao diện web chuyển sang cảnh báo đỏ, điện thoại nhận được thông báo đẩy báo nhiệt độ cao.
+3. **Cảnh báo rò rỉ gas:** Kéo Slider ngưỡng khí gas (**V3**) xuống thấp hơn giá trị đo thực tế, hoặc xịt nhẹ khí gas từ bật lửa vào cảm biến MQ5. Còi báo (GPIO 18) phải kêu, rơ-le (GPIO 27) đóng tiếp điểm, giao diện chuyển cảnh báo đỏ và điện thoại nhận được thông báo đẩy báo rò rỉ khí gas.
